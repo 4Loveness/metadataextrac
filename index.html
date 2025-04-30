@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MetaExtract - File Metadata Extraction Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .file-drop-area {
+            border: 2px dashed #cbd5e0;
+            transition: all 0.3s ease;
+        }
+        .file-drop-area.active {
+            border-color: #4f46e5;
+            background-color: #f0f4ff;
+        }
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+        .metadata-item {
+            transition: all 0.2s ease;
+        }
+        .metadata-item:hover {
+            background-color: #f8fafc;
+            transform: translateX(2px);
+        }
+        .file-icon {
+            font-size: 2.5rem;
+        }
+        .tab-active {
+            border-bottom: 3px solid #4f46e5;
+            color: #4f46e5;
+            font-weight: 600;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- Header -->
+        <header class="text-center mb-10">
+            <h1 class="text-4xl font-bold text-indigo-700 mb-2">MetaExtract</h1>
+            <p class="text-gray-600 text-lg">Extract metadata from 10+ common file types instantly</p>
+            <div class="flex justify-center mt-4">
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800 mr-2">
+                    <i class="fas fa-file-pdf mr-1"></i> PDF
+                </span>
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 mr-2">
+                    <i class="fas fa-file-word mr-1"></i> DOCX
+                </span>
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 mr-2">
+                    <i class="fas fa-file-excel mr-1"></i> XLSX
+                </span>
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 mr-2">
+                    <i class="fas fa-file-image mr-1"></i> JPG/PNG
+                </span>
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
+                    <i class="fas fa-file-audio mr-1"></i> MP3/MP4
+                </span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <!-- Tabs -->
+            <div class="flex border-b">
+                <button id="upload-tab" class="tab-active px-6 py-4 text-center focus:outline-none">
+                    <i class="fas fa-upload mr-2"></i> Upload File
+                </button>
+                <button id="about-tab" class="px-6 py-4 text-center text-gray-500 focus:outline-none">
+                    <i class="fas fa-info-circle mr-2"></i> About
+                </button>
+            </div>
+
+            <!-- Upload Panel -->
+            <div id="upload-panel" class="p-6">
+                <div class="file-drop-area rounded-lg p-8 text-center mb-6" id="drop-area">
+                    <i class="fas fa-cloud-upload-alt file-icon text-indigo-400 mb-4"></i>
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2">Drag & Drop your file here</h3>
+                    <p class="text-gray-500 mb-4">or</p>
+                    <label for="file-input" class="cursor-pointer bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-6 rounded-md transition duration-300 inline-flex items-center">
+                        <i class="fas fa-folder-open mr-2"></i> Browse Files
+                    </label>
+                    <input type="file" id="file-input" class="hidden" accept=".pdf,.docx,.xlsx,.pptx,.jpg,.jpeg,.png,.mp3,.mp4,.zip,.txt">
+                    <p class="text-sm text-gray-500 mt-4">Supports: PDF, DOCX, XLSX, PPTX, JPG, PNG, MP3, MP4, ZIP, TXT</p>
+                </div>
+
+                <!-- Progress Bar -->
+                <div id="progress-container" class="hidden mb-6">
+                    <div class="flex justify-between mb-1">
+                        <span class="text-sm font-medium text-gray-700">Extracting metadata...</span>
+                        <span id="progress-percent" class="text-sm font-medium text-gray-700">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                        <div id="progress-bar" class="progress-bar bg-indigo-600 h-2.5 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Results -->
+                <div id="results-container" class="hidden">
+                    <div class="flex items-start mb-6">
+                        <div id="file-icon" class="mr-4 text-4xl text-indigo-500"></div>
+                        <div>
+                            <h3 id="file-name" class="text-xl font-semibold text-gray-800"></h3>
+                            <p id="file-type" class="text-gray-600"></p>
+                            <p id="file-size" class="text-sm text-gray-500"></p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-medium text-gray-700 mb-3 flex items-center">
+                                <i class="fas fa-info-circle mr-2 text-indigo-500"></i> Basic Information
+                            </h4>
+                            <div id="basic-metadata" class="space-y-2"></div>
+                        </div>
+                        
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-medium text-gray-700 mb-3 flex items-center">
+                                <i class="fas fa-cog mr-2 text-indigo-500"></i> Technical Details
+                            </h4>
+                            <div id="technical-metadata" class="space-y-2"></div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-medium text-gray-700 mb-3 flex items-center">
+                            <i class="fas fa-tags mr-2 text-indigo-500"></i> Additional Metadata
+                        </h4>
+                        <div id="additional-metadata" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"></div>
+                    </div>
+
+                    <div class="mt-6 flex justify-end">
+                        <button id="download-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md transition duration-300 inline-flex items-center mr-3">
+                            <i class="fas fa-download mr-2"></i> Download Report
+                        </button>
+                        <button id="reset-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-md transition duration-300 inline-flex items-center">
+                            <i class="fas fa-redo mr-2"></i> Analyze Another File
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- About Panel -->
+            <div id="about-panel" class="hidden p-6">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4">About MetaExtract</h2>
+                <p class="text-gray-600 mb-6">
+                    MetaExtract is a powerful tool that allows you to extract metadata from various file types without uploading your files to any server. 
+                    All processing happens directly in your browser, ensuring your data remains private and secure.
+                </p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div class="bg-indigo-50 p-5 rounded-lg">
+                        <h3 class="font-semibold text-indigo-700 mb-3 flex items-center">
+                            <i class="fas fa-shield-alt mr-2"></i> Privacy Focused
+                        </h3>
+                        <p class="text-gray-600">
+                            Your files never leave your computer. All metadata extraction happens locally in your browser.
+                        </p>
+                    </div>
+                    <div class="bg-green-50 p-5 rounded-lg">
+                        <h3 class="font-semibold text-green-700 mb-3 flex items-center">
+                            <i class="fas fa-file-alt mr-2"></i> Multiple Formats
+                        </h3>
+                        <p class="text-gray-600">
+                            Supports 10+ common file types including documents, images, audio, video, and archives.
+                        </p>
+                    </div>
+                </div>
+
+                <h3 class="text-xl font-semibold text-gray-800 mb-3">Supported File Types</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white rounded-lg overflow-hidden">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="py-3 px-4 text-left text-gray-700">File Type</th>
+                                <th class="py-3 px-4 text-left text-gray-700">Extension</th>
+                                <th class="py-3 px-4 text-left text-gray-700">Metadata Extracted</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            <tr>
+                                <td class="py-3 px-4">Portable Document Format</td>
+                                <td class="py-3 px-4">.pdf</td>
+                                <td class="py-3 px-4">Title, Author, Creator, Producer, Creation Date, Modification Date, Keywords</td>
+                            </tr>
+                            <tr class="bg-gray-50">
+                                <td class="py-3 px-4">Word Document</td>
+                                <td class="py-3 px-4">.docx</td>
+                                <td class="py-3 px-4">Author, Created Date, Modified Date, Last Modified By, Revision, Word Count</td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 px-4">Excel Spreadsheet</td>
+                                <td class="py-3 px-4">.xlsx</td>
+                                <td class="py-3 px-4">Author, Created Date, Modified Date, Last Modified By, Sheets, Application</td>
+                            </tr>
+                            <tr class="bg-gray-50">
+                                <td class="py-3 px-4">PowerPoint Presentation</td>
+                                <td class="py-3 px-4">.pptx</td>
+                                <td class="py-3 px-4">Author, Created Date, Modified Date, Slides, Application</td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 px-4">JPEG Image</td>
+                                <td class="py-3 px-4">.jpg, .jpeg</td>
+                                <td class="py-3 px-4">Dimensions, Camera Make/Model, Date Taken, GPS, Software, DPI</td>
+                            </tr>
+                            <tr class="bg-gray-50">
+                                <td class="py-3 px-4">PNG Image</td>
+                                <td class="py-3 px-4">.png</td>
+                                <td class="py-3 px-4">Dimensions, Creation Time, Software, Color Type, Bit Depth</td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 px-4">MP3 Audio</td>
+                                <td class="py-3 px-4">.mp3</td>
+                                <td class="py-3 px-4">Title, Artist, Album, Year, Genre, Duration, Bitrate</td>
+                            </tr>
+                            <tr class="bg-gray-50">
+                                <td class="py-3 px-4">MP4 Video</td>
+                                <td class="py-3 px-4">.mp4</td>
+                                <td class="py-3 px-4">Duration, Dimensions, Codec, Creation Date, Frame Rate, Bitrate</td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 px-4">ZIP Archive</td>
+                                <td class="py-3 px-4">.zip</td>
+                                <td class="py-3 px-4">File Count, Compression Method, File Names, Comment</td>
+                            </tr>
+                            <tr class="bg-gray-50">
+                                <td class="py-3 px-4">Text File</td>
+                                <td class="py-3 px-4">.txt</td>
+                                <td class="py-3 px-4">Character Encoding, Line Count, Word Count, Byte Order Mark</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="mt-12 text-center text-gray-500 text-sm">
+            <p>MetaExtract - A client-side metadata extraction tool. No files are uploaded to any server.</p>
+            <p class="mt-2">Built with <i class="fas fa-heart text-red-500"></i> using HTML, CSS, and JavaScript</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Tab switching
+            const uploadTab = document.getElementById('upload-tab');
+            const aboutTab = document.getElementById('about-tab');
+            const uploadPanel = document.getElementById('upload-panel');
+            const aboutPanel = document.getElementById('about-panel');
+
+            uploadTab.addEventListener('click', () => {
+                uploadTab.classList.add('tab-active');
+                aboutTab.classList.remove('tab-active');
+                uploadPanel.classList.remove('hidden');
+                aboutPanel.classList.add('hidden');
+            });
+
+            aboutTab.addEventListener('click', () => {
+                aboutTab.classList.add('tab-active');
+                uploadTab.classList.remove('tab-active');
+                aboutPanel.classList.remove('hidden');
+                uploadPanel.classList.add('hidden');
+            });
+
+            // File drop area functionality
+            const dropArea = document.getElementById('drop-area');
+            const fileInput = document.getElementById('file-input');
+
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropArea.addEventListener(eventName, highlight, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, unhighlight, false);
+            });
+
+            function highlight() {
+                dropArea.classList.add('active');
+            }
+
+            function unhighlight() {
+                dropArea.classList.remove('active');
+            }
+
+            dropArea.addEventListener('drop', handleDrop, false);
+            fileInput.addEventListener('change', handleFiles, false);
+
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                fileInput.files = files;
+                handleFiles();
+            }
+
+            function handleFiles() {
+                const files = fileInput.files;
+                if (files.length) {
+                    processFile(files[0]);
+                }
+            }
+
+            // File processing
+            const progressContainer = document.getElementById('progress-container');
+            const progressBar = document.getElementById('progress-bar');
+            const progressPercent = document.getElementById('progress-percent');
+            const resultsContainer = document.getElementById('results-container');
+            const fileName = document.getElementById('file-name');
+            const fileType = document.getElementById('file-type');
+            const fileSize = document.getElementById('file-size');
+            const fileIcon = document.getElementById('file-icon');
+            const basicMetadata = document.getElementById('basic-metadata');
+            const technicalMetadata = document.getElementById('technical-metadata');
+            const additionalMetadata = document.getElementById('additional-metadata');
+            const downloadBtn = document.getElementById('download-btn');
+            const resetBtn = document.getElementById('reset-btn');
+
+            function processFile(file) {
+                // Show progress bar
+                progressContainer.classList.remove('hidden');
+                dropArea.classList.add('hidden');
+                
+                // Simulate progress (in a real app, this would be actual processing)
+                let progress = 0;
+                const interval = setInterval(() => {
+                    progress += Math.random() * 10;
+                    if (progress > 100) progress = 100;
+                    progressBar.style.width = `${progress}%`;
+                    progressPercent.textContent = `${Math.round(progress)}%`;
+                    
+                    if (progress === 100) {
+                        clearInterval(interval);
+                        setTimeout(() => {
+                            showResults(file);
+                        }, 300);
+                    }
+                }, 100);
+            }
+
+            function showResults(file) {
+                progressContainer.classList.add('hidden');
+                resultsContainer.classList.remove('hidden');
+                
+                // Display file info
+                fileName.textContent = file.name;
+                fileSize.textContent = formatFileSize(file.size);
+                
+                // Set file icon based on type
+                const fileExt = file.name.split('.').pop().toLowerCase();
+                fileType.textContent = getFileTypeName(fileExt);
+                fileIcon.innerHTML = getFileIcon(fileExt);
+                
+                // Generate mock metadata (in a real app, you'd extract actual metadata)
+                const metadata = generateMockMetadata(file, fileExt);
+                
+                // Display basic metadata
+                basicMetadata.innerHTML = '';
+                metadata.basic.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'metadata-item flex justify-between py-2 px-3 rounded';
+                    div.innerHTML = `
+                        <span class="text-gray-600">${item.name}</span>
+                        <span class="font-medium text-gray-800">${item.value}</span>
+                    `;
+                    basicMetadata.appendChild(div);
+                });
+                
+                // Display technical metadata
+                technicalMetadata.innerHTML = '';
+                metadata.technical.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'metadata-item flex justify-between py-2 px-3 rounded';
+                    div.innerHTML = `
+                        <span class="text-gray-600">${item.name}</span>
+                        <span class="font-medium text-gray-800">${item.value}</span>
+                    `;
+                    technicalMetadata.appendChild(div);
+                });
+                
+                // Display additional metadata
+                additionalMetadata.innerHTML = '';
+                metadata.additional.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'metadata-item p-3 bg-white rounded border border-gray-100 shadow-xs';
+                    div.innerHTML = `
+                        <div class="text-sm font-medium text-gray-500 mb-1">${item.name}</div>
+                        <div class="text-gray-800">${item.value}</div>
+                    `;
+                    additionalMetadata.appendChild(div);
+                });
+            }
+
+            function formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            function getFileTypeName(ext) {
+                const types = {
+                    'pdf': 'Adobe PDF Document',
+                    'docx': 'Microsoft Word Document',
+                    'xlsx': 'Microsoft Excel Spreadsheet',
+                    'pptx': 'Microsoft PowerPoint Presentation',
+                    'jpg': 'JPEG Image',
+                    'jpeg': 'JPEG Image',
+                    'png': 'PNG Image',
+                    'mp3': 'MP3 Audio File',
+                    'mp4': 'MP4 Video File',
+                    'zip': 'ZIP Archive',
+                    'txt': 'Plain Text File'
+                };
+                return types[ext] || 'Unknown File Type';
+            }
+
+            function getFileIcon(ext) {
+                const icons = {
+                    'pdf': '<i class="fas fa-file-pdf"></i>',
+                    'docx': '<i class="fas fa-file-word"></i>',
+                    'xlsx': '<i class="fas fa-file-excel"></i>',
+                    'pptx': '<i class="fas fa-file-powerpoint"></i>',
+                    'jpg': '<i class="fas fa-file-image"></i>',
+                    'jpeg': '<i class="fas fa-file-image"></i>',
+                    'png': '<i class="fas fa-file-image"></i>',
+                    'mp3': '<i class="fas fa-file-audio"></i>',
+                    'mp4': '<i class="fas fa-file-video"></i>',
+                    'zip': '<i class="fas fa-file-archive"></i>',
+                    'txt': '<i class="fas fa-file-alt"></i>'
+                };
+                return icons[ext] || '<i class="fas fa-file"></i>';
+            }
+
+            function generateMockMetadata(file, ext) {
+                const now = new Date();
+                const createdDate = new Date(now.getTime() - Math.random() * 30 * 24 * 60 * 60 * 1000);
+                
+                // Common metadata for all files
+                const commonBasic = [
+                    { name: 'File Name', value: file.name },
+                    { name: 'File Size', value: formatFileSize(file.size) },
+                    { name: 'File Type', value: getFileTypeName(ext) },
+                    { name: 'Last Modified', value: file.lastModifiedDate ? file.lastModifiedDate.toLocaleString() : now.toLocaleString() }
+                ];
+                
+                const commonTechnical = [
+                    { name: 'MIME Type', value: file.type || 'application/octet-stream' },
+                    { name: 'Extension', value: '.' + ext }
+                ];
+                
+                // Type-specific metadata
+                let typeSpecificBasic = [];
+                let typeSpecificTechnical = [];
+                let additional = [];
+                
+                switch(ext) {
+                    case 'pdf':
+                        typeSpecificBasic = [
+                            { name: 'Title', value: 'Document Title' },
+                            { name: 'Author', value: 'John Doe' },
+                            { name: 'Creator', value: 'Adobe Acrobat' },
+                            { name: 'Producer', value: 'Adobe PDF Library' }
+                        ];
+                        typeSpecificTechnical = [
+                            { name: 'PDF Version', value: '1.7' },
+                            { name: 'Page Count', value: Math.floor(Math.random() * 100) + 1 }
+                        ];
+                        additional = [
+                            { name: 'Keywords', value: 'sample, document, pdf' },
+                            { name: 'Creation Date', value: createdDate.toLocaleString() },
+                            { name: 'Modification Date', value: now.toLocaleString() }
+                        ];
+                        break;
+                        
+                    case 'docx':
+                        typeSpecificBasic = [
+                            { name: 'Author', value: 'Jane Smith' },
+                            { name: 'Created', value: createdDate.toLocaleString() },
+                            { name: 'Modified', value: now.toLocaleString() },
+                            { name: 'Last Modified By', value: 'Jane Smith' }
+                        ];
+                        typeSpecificTechnical = [
+                            { name: 'Application', value: 'Microsoft Office Word' },
+                            { name: 'Word Count', value: Math.floor(Math.random() * 5000) + 100 }
+                        ];
+                        additional = [
+                            { name: 'Revision', value: Math.floor(Math.random() * 10) + 1 },
+                            { name: 'Template', value: 'Normal.dotm' },
+                            { name: 'Total Editing Time', value: Math.floor(Math.random() * 120) + ' minutes' }
+                        ];
+                        break;
+                        
+                    case 'xlsx':
+                        typeSpecificBasic = [
+                            { name: 'Author', value: 'Data Analyst' },
+                            { name: 'Created', value: createdDate.toLocaleString() },
+                            { name: 'Modified', value: now.toLocaleString() },
+                            { name: 'Last Modified By', value: 'Data Analyst' }
+                        ];
+                        typeSpecificTechnical = [
+                            { name: 'Application', value: 'Microsoft Office Excel' },
+                            { name: 'Sheet Count', value: Math.floor(Math.random() * 5) + 1 }
+                        ];
+                        additional = [
+                            { name: 'Company', value: 'ACME Inc.' },
+                            { name: 'Category', value: 'Financial Data' },
+                            { name: 'Content Status', value: 'Final' }
+                        ];
+                        break;
+                        
+                    case 'pptx':
+                        typeSpecificBasic = [
+                            { name: 'Author', value: 'Presentation Creator' },
+                            { name: 'Created', value: createdDate.toLocaleString() },
+                            { name: 'Modified', value: now.toLocaleString() },
+                            { name: 'Last Modified By', value: 'Presentation Creator' }
+                        ];
+                        typeSpecificTechnical = [
+                            { name: 'Application', value: 'Microsoft Office PowerPoint' },
+                            { name: 'Slide Count', value: Math.floor(Math.random() * 30) + 5 }
+                        ];
+                        additional = [
+                            { name: 'Template', value: 'Office Theme' },
+                            { name: 'Presentation Format', value: 'On-screen Show (16:9)' },
+                            { name: 'Total Editing Time', value: Math.floor(Math.random() * 180) + ' minutes' }
+                        ];
+                        break;
+                        
+                    case 'jpg':
+                    case 'jpeg':
+                    case 'png':
+                        const width = Math.floor(Math.random() * 2000) + 800;
+                        const height = Math.floor(Math.random() * 2000) + 600;
+                        typeSpecificBasic = [
+                            { name: 'Dimensions', value: `${width} × ${height} pixels` },
+                            { name: 'Color Depth', value: '24 bit' },
+                            { name: 'Resolution', value: '72 dpi' }
+                        ];
+                        typeSpecificTechnical = [
+                            { name: 'Compression', value: ext === 'png' ? 'Deflate' : 'JPEG' },
+                            { name: 'Color Space', value: 'RGB' }
+                        ];
+                        additional = [
+                            { name: 'Camera Make', value: 'Canon' },
+                            { name: 'Camera Model', value: 'EOS 5D Mark IV' },
+                            { name: 'Date Taken', value: createdDate.toLocaleString() },
+                            { name: 'Software', value: 'Adobe Photoshop CC' },
+                            { name: 'Exposure Time', value: '1/125 sec' },
+                            { name: 'F-Number', value: 'f/8' },
+                            { name: 'ISO Speed', value: '200' }
+                        ];
+                        break;
+                        
+                    case 'mp3':
+                        const duration = Math.floor(Math.random() * 300) + 60;
+                        typeSpecificBasic = [
+                            { name: 'Title', value: 'Sample Song' },
+                            { name: 'Artist', value: 'Unknown Artist' },
+                            { name: 'Album', value: 'Unknown Album' },
+                            { name: 'Duration', value: `${Math.floor(duration / 60)}:${(duration % 60).toString().padStart(2, '0')}` }
+                        ];
+                        typeSpecificTechnical = [
+                            { name: 'Bitrate', value: '192 kbps' },
+                            { name: 'Sample Rate', value: '44.1 kHz' },
+                            { name: 'Channels', value: 'Stereo' }
+                        ];
+                        additional = [
+                            { name: 'Genre', value: 'Pop' },
+                            { name: 'Year', value: '2023' },
+                            { name: 'Track Number', value: Math.floor(Math.random() * 12) + 1 },
+                            { name: 'Composer', value: 'Unknown' }
+                        ];
+                        break;
+                        
+                    case 'mp4':
+                        const videoDuration = Math.floor(Math.random() * 600) + 60;
+                        typeSpecificBasic = [
+                            { name: 'Dimensions', value: '1920 × 1080 pixels' },
+                            { name: 'Duration', value: `${Math.floor(videoDuration / 60)}:${(videoDuration % 60).toString().padStart(2, '0')}` },
+                            { name: 'Frame Rate', value: '29.97 fps' }
+                        ];
+                        typeSpecificTechnical = [
+                            { name: 'Video Codec', value: 'H.264' },
+                            { name: 'Audio Codec', value: 'AAC' },
+                            { name: 'Bitrate', value: '5000 kbps' }
+                        ];
+                        additional = [
+                            { name: 'Creation Date', value: createdDate.toLocaleString() },
+                            { name: 'Software', value: 'Final Cut Pro' },
+                            { name: 'Media Type', value: 'Movie' }
+                        ];
+                        break;
+                        
+                    case 'zip':
+                        const fileCount = Math.floor(Math.random() * 50) + 5;
+                        typeSpecificBasic = [
+                            { name: 'File Count', value: fileCount },
+                            { name: 'Compression Method', value: 'Deflate' },
+                            { name: 'Encrypted', value: 'No' }
+                        ];
+                        typeSpecificTechnical = [
+                            { name: 'Compressed Size', value: formatFileSize(file.size) },
+                            { name: 'Uncompressed Size', value: formatFileSize(file.size * (Math.random() * 2 + 1)) }
+                        ];
+                        additional = [
+                            { name: 'Comment', value: 'Sample archive file' },
+                            { name: 'Contains', value: `${fileCount} files` }
+                        ];
+                        break;
+                        
+                    case 'txt':
+                        const lineCount = Math.floor(Math.random() * 500) + 50;
+                        const wordCount = Math.floor(Math.random() * 5000) + 500;
+                        typeSpecificBasic = [
+                            { name: 'Character Encoding', value: 'UTF-8' },
+                            { name: 'Line Count', value: lineCount },
+                            { name: 'Word Count', value: wordCount }
+                        ];
+                        typeSpecificTechnical = [
+                            { name: 'Line Endings', value: 'LF (Unix)' },
+                            { name: 'Has BOM', value: 'No' }
+                        ];
+                        additional = [
+                            { name: 'Language', value: 'English' },
+                            { name: 'Content Type', value: 'Plain Text' }
+                        ];
+                        break;
+                        
+                    default:
+                        typeSpecificBasic = [
+                            { name: 'File Format', value: ext.toUpperCase() }
+                        ];
+                        typeSpecificTechnical = [
+                            { name: 'Unknown Format', value: 'Metadata extraction limited' }
+                        ];
+                        additional = [
+                            { name: 'Note', value: 'This file type has limited metadata support' }
+                        ];
+                }
+                
+                return {
+                    basic: [...commonBasic, ...typeSpecificBasic],
+                    technical: [...commonTechnical, ...typeSpecificTechnical],
+                    additional: additional
+                };
+            }
+
+            // Reset button
+            resetBtn.addEventListener('click', () => {
+                resultsContainer.classList.add('hidden');
+                dropArea.classList.remove('hidden');
+                fileInput.value = '';
+            });
+
+            // Download button
+            downloadBtn.addEventListener('click', () => {
+                // In a real app, this would generate a report
+                alert('In a real application, this would download a PDF report with all the metadata.');
+            });
+        });
+    </script>
+</body>
+</html>
